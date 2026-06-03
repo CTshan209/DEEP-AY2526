@@ -3,46 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>門票自動核銷系統</title>
+    <title>DEEP 入場門票</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 50px 20px;
-        }
-        .ticket-box {
-            background: white;
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            border: 2px dashed #ccc;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 0; padding: 50px 20px; }
+        .ticket-box { background: white; max-width: 400px; margin: 0 auto; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px dashed #ccc; }
         h1 { color: #333; margin-bottom: 10px; }
-        .token-display {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            letter-spacing: 2px;
-            margin: 20px 0;
-        }
-        .status {
-            font-size: 20px;
-            font-weight: bold;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-        .success { background-color: #d4edda; color: #155724; } /* 綠色：核銷成功 */
-        .already_used { background-color: #fff3cd; color: #856404; } /* 黃色：已被使用過 */
-        .invalid { background-color: #f8d7da; color: #721c24; } /* 紅色：查無此票 */
-        .loading { background-color: #e2e3e5; color: #383d41; } /* 灰色：處理中 */
+        .seat-display { font-size: 32px; font-weight: bold; color: #1e90ff; background: #e1f0ff; padding: 15px; border-radius: 5px; margin: 15px 0; letter-spacing: 1px; }
+        .token-display { font-size: 14px; color: #999; background: #f9f9f9; padding: 5px; border-radius: 5px; margin: 10px 0; word-break: break-all; }
+        .status { font-size: 20px; font-weight: bold; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .already_used { background-color: #fff3cd; color: #856404; }
+        .invalid { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #e2e3e5; color: #383d41; }
     </style>
 </head>
 <body>
@@ -51,14 +23,18 @@
         <h1>DEEP入場門票</h1>
         <p>自動化雲端核銷系統</p>
         <hr>
+        
         <p>【 門票編號 】</p>
+        <div class="seat-display" id="seatId">驗證中...</div>
+
+        <p style="font-size: 12px; color: #aaa; margin-bottom: 2px;">【 安全驗證亂碼 】</p>
         <div class="token-display" id="ticketToken">讀取中...</div>
         
         <div id="verifyStatus" class="status loading">正在自動核銷中，請稍候...</div>
     </div>
 
     <script>
-        // ⚠️ 請把下方引號內的網址，替換成你在步驟二複製的 Google Apps Script 網頁應用程式網址！
+        // ⚠️ 記得替換成你最新部署的 GAS 網址（結尾是 /exec）
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby2Zf-qCXPxlrpfiD6GC4LcCuueS5YC8-4xyVL7h1NGh5KaPh5I30l2oMn4JkQIiqhYkA/exec";
 
         function getTicketId() {
@@ -69,10 +45,12 @@
         async function autoVerifyAndCheck() {
             const ticketId = getTicketId();
             const tokenDisplay = document.getElementById('ticketToken');
+            const seatDisplay = document.getElementById('seatId');
             const statusDisplay = document.getElementById('verifyStatus');
 
             if (!ticketId) {
                 tokenDisplay.innerText = "未帶代碼";
+                seatDisplay.innerText = "❌";
                 statusDisplay.className = "status invalid";
                 statusDisplay.innerText = "❌ 錯誤：無效的門票網址";
                 return;
@@ -81,23 +59,21 @@
             tokenDisplay.innerText = ticketId;
 
             try {
-                // 發送請求給 GAS，觸發自動打勾與檢查
                 const response = await fetch(`${GAS_API_URL}?id=${ticketId}`);
                 const result = await response.json();
 
-                // 根據後端回傳的 JSON 結果變更網頁畫面
                 if (result.status === "success") {
+                    seatDisplay.innerText = result.seatId; // 顯示觀眾編號 (例如 AVIP-1)
                     statusDisplay.className = "status success";
                     statusDisplay.innerText = "🟢 核銷成功！歡迎入場";
                 } else if (result.status === "already_used") {
+                    seatDisplay.innerText = result.seatId; // 顯示觀眾編號
                     statusDisplay.className = "status already_used";
                     statusDisplay.innerText = "🟡 警告：此門票已被掃描過！";
-                } else if (result.status === "not_found") {
+                } else {
+                    seatDisplay.innerText = "❌";
                     statusDisplay.className = "status invalid";
                     statusDisplay.innerText = "❌ 查無此票：資料庫無此編號";
-                } else {
-                    statusDisplay.className = "status invalid";
-                    statusDisplay.innerText = "❌ 驗證失敗：無效的請求";
                 }
 
             } catch (error) {
@@ -107,7 +83,6 @@
             }
         }
 
-        // 頁面一載入立刻執行核銷
         autoVerifyAndCheck();
     </script>
 

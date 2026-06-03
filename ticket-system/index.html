@@ -69,9 +69,9 @@
                 } else if (result.status === "already_used") {
                     seatDisplay.innerText = result.seatId; // 顯示觀眾編號
                     statusDisplay.className = "status already_used";
-                    statusDisplay.innerText = "🟡此門票已被掃描過！";
+                    statusDisplay.innerText = "🟡不要重用！！";
                 } else {
-                    seatDisplay.innerText = "❌";
+                    seatDisplay.innerText = "???????";
                     statusDisplay.className = "status invalid";
                     statusDisplay.innerText = "❌假飛？";
                 }

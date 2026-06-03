@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>門票驗證系統</title>
+    <title>門票雲端驗證系統</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,6 +12,7 @@
             margin: 0;
             padding: 50px 20px;
         }
+
         .ticket-box {
             background: white;
             max-width: 400px;
@@ -21,41 +22,130 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border: 2px dashed #ccc;
         }
-        h1 { color: #333; margin-bottom: 10px; }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
         .token-display {
             font-size: 24px;
             font-weight: bold;
-            color: #ff4757;
-            background: #ffeac1;
+            color: #333;
+            background: #f0f0f0;
             padding: 10px;
             border-radius: 5px;
             letter-spacing: 2px;
             margin: 20px 0;
         }
-        .instructions { color: #666; font-size: 14px; }
+        /* 狀態提示樣式 */
+        .status {
+            font-size: 20px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .valid {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        /* 綠色：有效 */
+        .invalid {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        /* 紅色：已被使用或無效 */
+        .loading {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        /* 黃色：載入中 */
     </style>
 </head>
 <body>
 
     <div class="ticket-box">
-        <h1>DEEP入場門票</h1>
-        <p>工作人員專用驗證頁面</p>
+        <h1>DEEP電子入場門票</h1>
+        <p>雲端資料庫連線驗證</p>
         <hr>
-        <p>【 門票唯一識別碼 】</p>
-        <div class="token-display" id="ticketToken">載入中...</div>
-        <p class="instructions">請工作人員核對試算表，若此代碼未被使用，請將其註銷並放行。</p>
+        <p>【 門票編號 】</p>
+        <div class="token-display" id="ticketToken">讀取中...</div>
+
+        <div id="verifyStatus" class="status loading">正在連線資料庫...</div>
     </div>
 
-    <script>
-        // 自動解析網址列的參數 (例如: ticket.html?id=TICKET-001)
+    <script>// ⚠️ 請把下方引號內的網址，替換成你剛剛在 Google 試算表複製的 CSV 網址！
+        const DATABASE_CSV_URL = "https://script.google.com/macros/s/AKfycbzMv2cWa6SwcSWzQnt9ADG7RbVvdeQXMRHIhnZ6G6PyihLeEYw6qg7bxHv_QKsJ39Ex3Q/exec";
+
+        // 1. 抓取網址的參數 id
         function getTicketId() {
             const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('id') || '無效門票';
+            return urlParams.get('id');
         }
 
-        // 將代碼渲染到畫面上
-        document.getElementById('ticketToken').innerText = getTicketId();
-    </script>
+        // 2. 連線 Google 試算表資料庫並驗證
+        async function verifyTicket() {
+            const ticketId = getTicketId();
+            const tokenDisplay = document.getElementById('ticketToken');
+            const statusDisplay = document.getElementById('verifyStatus');
+
+            if (!ticketId) {
+                tokenDisplay.innerText = "未帶代碼";
+                statusDisplay.className = "status invalid";
+                statusDisplay.innerText = "❌ 錯誤：無效的門票網址";
+                return;
+            }
+
+            tokenDisplay.innerText = ticketId;
+
+            try {
+                // 線上抓取 Google 試算表的資料
+                const response = await fetch(DATABASE_CSV_URL);
+                const dataText = await response.text();
+
+                // 將 CSV 文字切成一列一列
+                const rows = dataText.split("\n");
+
+                let ticketFound = false;
+                let isUsed = false;
+
+                // 逐行尋找有沒有匹配的門票代碼
+                for (let i = 1; i < rows.length; i++) {
+                    const columns = rows[i].split(",");
+                    // columns[0] 是 A 欄(代碼), columns[3] 是 D 欄(核銷狀態)
+                    if (columns[0] && columns[0].trim() === ticketId.trim()) {
+                        ticketFound = true;
+                        // Google 試算表勾選會變成 "TRUE"，沒勾是 "FALSE"
+                        if (columns[3] && columns[3].trim().toUpperCase() === "TRUE") {
+                            isUsed = true;
+                        }
+                        break;
+                    }
+                }
+
+                // 3. 根據資料庫結果顯示畫面
+                if (!ticketFound) {
+                    statusDisplay.className = "status invalid";
+                    statusDisplay.innerText = "❌ 查無此票：資料庫無此編號";
+                } else if (isUsed) {
+                    statusDisplay.className = "status invalid";
+                    statusDisplay.innerText = "🔴 此門票已被掃描過，無法入場！";
+                } else {
+                    statusDisplay.className = "status valid";
+                    statusDisplay.innerText = "🟢 驗證成功！此門票有效";
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusDisplay.className = "status invalid";
+                statusDisplay.innerText = "⚠️ 系統錯誤：無法連線至雲端資料庫";
+            }
+        }
+
+        // 啟動驗證
+        verifyTicket();</script>
 
 </body>
 </html>

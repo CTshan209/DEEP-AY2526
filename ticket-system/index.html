@@ -27,7 +27,7 @@
         <p>【 門票編號 】</p>
         <div class="seat-display" id="seatId">CTS驗證中...</div>
 
-        <p style="font-size: 12px; color: #aaa; margin-bottom: 2px;">【 安全驗證代碼 】</p>
+        <p style="font-size: 12px; color: #aaa; margin-bottom: 2px;">【 驗證代碼 】</p>
         <div class="token-display" id="ticketToken">CTS讀取中...</div>
         
         <div id="verifyStatus" class="status loading">CTS正在核銷中，請稍候...</div>
@@ -52,7 +52,7 @@
                 tokenDisplay.innerText = "未帶代碼";
                 seatDisplay.innerText = "❌";
                 statusDisplay.className = "status invalid";
-                statusDisplay.innerText = "❌ 錯誤：無效的門票網址";
+                statusDisplay.innerText = "❌無效的門票網址！";
                 return;
             }
 
@@ -65,21 +65,21 @@
                 if (result.status === "success") {
                     seatDisplay.innerText = result.seatId; // 顯示觀眾編號 (例如 AVIP-1)
                     statusDisplay.className = "status success";
-                    statusDisplay.innerText = "🟢 核銷成功！歡迎入場";
+                    statusDisplay.innerText = "🟢歡迎入場～";
                 } else if (result.status === "already_used") {
                     seatDisplay.innerText = result.seatId; // 顯示觀眾編號
                     statusDisplay.className = "status already_used";
-                    statusDisplay.innerText = "🟡 警告：此門票已被掃描過！";
+                    statusDisplay.innerText = "🟡此門票已被掃描過！";
                 } else {
                     seatDisplay.innerText = "❌";
                     statusDisplay.className = "status invalid";
-                    statusDisplay.innerText = "❌ 查無此票：資料庫無此編號";
+                    statusDisplay.innerText = "❌假飛？";
                 }
 
             } catch (error) {
                 console.error(error);
                 statusDisplay.className = "status invalid";
-                statusDisplay.innerText = "⚠️ 系統錯誤：無法連線至核銷伺服器";
+                statusDisplay.innerText = "⚠️系統錯誤：CTS無法連線至server";
             }
         }
 
